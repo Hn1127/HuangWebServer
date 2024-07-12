@@ -23,6 +23,5 @@ int main()
         test t;
         pool.append(&t, 0);
     }
-
     sleep(2);
 }
