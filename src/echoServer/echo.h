@@ -27,7 +27,7 @@ public:
 
     bool read_once();
 
-    void flush_file(char *filename, char *msg, size_t size);
+    void flush_file(const char *filename, char *msg, size_t size);
 
 public:
     static int m_epollfd;

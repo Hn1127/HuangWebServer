@@ -31,6 +31,9 @@
 *.out
 *.app
 
+# EchoLogFile directory
+/EchoLogFile
+
 # build directory
 /build
 

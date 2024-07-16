@@ -68,13 +68,13 @@ void echo::init()
     memset(m_write_buf, '\0', WRITE_BUFFER_SIZE);
 }
 
-void echo::flush_file(char *filename, char *msg, size_t size)
+void echo::flush_file(const char *filename, char *msg, size_t size)
 {
-
     FILE *logfile = fopen(filename, "a");
     if (logfile == NULL)
     {
         printf("open file failed!\n");
+        return;
     }
     fputs(msg, logfile);
     fputs("\n", logfile);
@@ -89,7 +89,8 @@ void echo::process()
     int write_bytes = 0;
     m_write_idx = 0;
     // 将读缓冲区内容先写入日志文件
-    flush_file("../EchoLogFile/EchoLog", m_write_buf, bytes_to_send);
+    std::string filename("../EchoLogFile/EchoLog");
+    flush_file(filename.c_str(), m_write_buf, bytes_to_send);
 
     while (true)
     {
@@ -104,15 +105,19 @@ void echo::process()
             }
             return;
         }
-        else if (write_bytes <= 0)
+        else if (write_bytes == 0)
         {
-            // 写完毕
-            modfd(m_epollfd, m_connfd, EPOLLIN, 1);
-            init();
+            // 对端关闭
             return;
         }
         m_write_idx += write_bytes;
         bytes_to_send -= write_bytes;
+        if (bytes_to_send == 0)
+        {
+            modfd(m_epollfd, m_connfd, EPOLLIN, 1);
+            init();
+            return;
+        }
     }
 }
 
@@ -141,7 +146,7 @@ bool echo::read_once()
         else if (bytes_read == 0)
         {
             // 对方已断开
-            return false;
+            return true;
         }
         m_read_idx += bytes_read;
     }

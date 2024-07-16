@@ -24,9 +24,16 @@ void echoServer::init(int port, int thread_num)
     echos = std::vector<std::shared_ptr<echo>>(MAX_FD_NUMBER, std::shared_ptr<echo>(new echo));
 }
 
-void echoServer::thread_pool()
+void echoServer::threadpoolInit()
 {
     m_pool = std::shared_ptr<threadpool<echo>>(new threadpool<echo>(max_thread_num));
+}
+
+void echoServer::run()
+{
+    threadpoolInit();
+    eventListen();
+    eventLoop();
 }
 
 void echoServer::eventListen()

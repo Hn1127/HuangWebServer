@@ -24,7 +24,8 @@ public:
 
 public:
     void init(int port = 9000, int thread_num = 8);
-    void thread_pool();
+    void threadpoolInit();
+    void run();
     void eventListen();
     void eventLoop();
     void dealWithRead(int sockfd);
