@@ -5,17 +5,29 @@ SHARED
 webServer.cpp http.cpp
 )
 
+add_subdirectory(timer)
+
 target_include_directories(webServer 
     PUBLIC
     ${CMAKE_SOURCE_DIR}/src/threadpool
 )
 
-target_include_directories(webServer 
+target_include_directories(webServer
     PUBLIC
-    ${CMAKE_SOURCE_DIR}/src/Utils
+    ${CMAKE_SOURCE_DIR}/src/webServer/timer
 )
 
-target_link_libraries(webServer 
+target_include_directories(webServer
     PUBLIC
-    Utils
+    ${CMAKE_SOURCE_DIR}/src/log
+)
+
+target_link_libraries(webServer
+    PUBLIC
+    log
+)
+
+target_link_libraries(webServer
+    PUBLIC
+    timer
 )

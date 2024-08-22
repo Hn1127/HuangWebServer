@@ -2,7 +2,7 @@ project(main)
 
 add_subdirectory(echoServer)
 
-add_subdirectory(Utils)
+add_subdirectory(log)
 
 add_subdirectory(webServer)
 

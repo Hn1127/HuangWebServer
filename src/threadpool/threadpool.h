@@ -15,7 +15,8 @@ public:
     threadpool(int max_thread_num = 8, int max_request_num = 1000);
     ~threadpool();
     // 向工作队列中添加一个任务，线程将从队列中取出并处理
-    bool append(std::shared_ptr<T> request, int state);
+    // state=0为读事件，state=1为写事件
+    bool append(T *request);
 
 private:
     // 线程入口函数，创建线程时进入该函数
@@ -24,12 +25,12 @@ private:
     void run();
 
 private:
-    int max_thread_number;                     // 最大线程数
-    int max_request_number;                    // 队列中最大任务数
-    pthread_t *m_threads;                      // 线程数组
-    std::list<std::shared_ptr<T>> m_workqueue; // 工作队列
-    MutexLock m_mutex;                         // 访问工作队列的互斥锁
-    sem m_sem;                                 // 查看工作队列是否有工作的信号量
+    int max_thread_number;      // 最大线程数
+    int max_request_number;     // 队列中最大任务数
+    pthread_t *m_threads;       // 线程数组
+    std::list<T *> m_workqueue; // 工作队列
+    MutexLock m_mutex;          // 访问工作队列的互斥锁
+    sem m_sem;                  // 查看工作队列是否有工作的信号量
 };
 
 template <class T>
@@ -65,9 +66,8 @@ threadpool<T>::~threadpool()
 }
 
 template <class T>
-bool threadpool<T>::append(std::shared_ptr<T> request, int state)
+bool threadpool<T>::append(T *request)
 {
-    // state=0为读事件，state=1为写事件
     // 向队列中添加任务
     {
         MutexLockGuard m(m_mutex);
@@ -98,7 +98,7 @@ void threadpool<T>::run()
         // 等待任务到达
         m_sem.wait();
         // 取出一项任务
-        std::shared_ptr<T> request;
+        T *request;
         {
             MutexLockGuard m(m_mutex);
             if (m_workqueue.empty())

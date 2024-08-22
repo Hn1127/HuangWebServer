@@ -68,19 +68,6 @@ void echo::init()
     memset(m_write_buf, '\0', WRITE_BUFFER_SIZE);
 }
 
-void echo::flush_file(const char *filename, char *msg, size_t size)
-{
-    FILE *logfile = fopen(filename, "a");
-    if (logfile == NULL)
-    {
-        printf("open file failed!\n");
-        return;
-    }
-    fputs(msg, logfile);
-    fputs("\n", logfile);
-    fflush(logfile);
-}
-
 void echo::process()
 {
     // 将读缓冲区中的内容写入发送缓冲区
@@ -89,8 +76,7 @@ void echo::process()
     int write_bytes = 0;
     m_write_idx = 0;
     // 将读缓冲区内容先写入日志文件
-    std::string filename("../EchoLogFile/EchoLog");
-    flush_file(filename.c_str(), m_write_buf, bytes_to_send);
+    LOG_INFO(m_read_buf);
 
     while (true)
     {

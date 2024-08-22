@@ -1,5 +1,6 @@
 #pragma once
 
+#include "log.h"
 #include "handler.h"
 #include <fcntl.h>
 #include <sys/epoll.h>
@@ -26,8 +27,6 @@ public:
     void process();
 
     bool read_once();
-
-    void flush_file(const char *filename, char *msg, size_t size);
 
 public:
     static int m_epollfd;

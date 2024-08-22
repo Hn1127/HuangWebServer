@@ -10,7 +10,6 @@
 #include <string.h>
 #include "echo.h"
 #include "threadpool.h"
-#include "Utils.h"
 
 const int MAX_EVENT_NUMBER = 10000; // epoll event 数目
 const int MAX_FD_NUMBER = 65536;    // 文件描述符数目，即最多处理的连接数
@@ -28,15 +27,13 @@ public:
     void run();
     void eventListen();
     void eventLoop();
-    void dealWithRead(int sockfd);
-    void dealWithWrite(int sockfd);
 
 private:
     // 基本信息
     int m_port; // 监听端口
 
     // 任务
-    std::vector<std::shared_ptr<echo>> echos;
+    std::vector<echo> echos;
 
     // 线程池相关
     std::shared_ptr<threadpool<echo>> m_pool;

@@ -21,11 +21,12 @@ void echoServer::init(int port, int thread_num)
 {
     m_port = port;
     max_thread_num = thread_num;
-    echos = std::vector<std::shared_ptr<echo>>(MAX_FD_NUMBER, std::shared_ptr<echo>(new echo));
+    echos = std::vector<echo>(MAX_FD_NUMBER);
 }
 
 void echoServer::threadpoolInit()
 {
+    LOG_INFO("Init threadpool");
     m_pool = std::shared_ptr<threadpool<echo>>(new threadpool<echo>(max_thread_num));
 }
 
@@ -58,6 +59,8 @@ void echoServer::eventListen()
     ret = bind(m_listenfd, (struct sockaddr *)&address, sizeof(address));
     assert(ret >= 0);
 
+    LOG_INFO("Start listening");
+
     // 开始监听
     ret = listen(m_listenfd, 5);
     assert(ret >= 0);
@@ -65,6 +68,8 @@ void echoServer::eventListen()
     // 创建epoolfd
     m_epollfd = epoll_create(5);
     assert(m_epollfd != -1);
+
+    LOG_INFO("Create epollfd");
 
     // 添加listenfd开始监听，设为非阻塞
     addfd(m_epollfd, m_listenfd, false, 1);
@@ -82,12 +87,15 @@ void echoServer::eventLoop()
     // 开始epoll循环
     bool stop_server = false;
 
+    LOG_INFO("Start epollLoop");
+
     while (!stop_server)
     {
         int number = epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);
         if (number < 0 && errno != EINTR)
         {
             // 监听出问题
+            LOG_INFO("epoll_wait filed!");
             break;
         }
 
@@ -107,38 +115,32 @@ void echoServer::eventLoop()
                 }
                 if (echo::m_user_count >= MAX_FD_NUMBER)
                 {
-                    Utils::show_error(connfd, "Internal server busy");
                     break;
                 }
                 // 将connfd添加epoll监视并设为非阻塞
                 char clientIP[64];
                 inet_ntop(AF_INET, &client_address.sin_addr.s_addr, clientIP, 64);
-                printf("welcome connection:%s\n", clientIP);
-                echos[connfd]->init(connfd, client_address);
+                char msg[128];
+                sprintf(msg, "welcome connection:%s(fd %d)\n", clientIP, connfd);
+                LOG_INFO(msg);
+                echos[connfd].init(connfd, client_address);
             }
             else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR))
             {
-                // 服务器端关闭连接
+                // 关闭连接
+                close(sockfd);
             }
             else if (events[i].events & EPOLLIN)
             {
                 // 处理客户连接上接收到的数据
                 // 主线程接收数据
-                if (echos[sockfd]->read_once())
+                if (echos[sockfd].read_once())
                 {
                     // 交由线程池发送数据
                     // 在process中重置EPOLLONESHOT
-                    m_pool->append(echos[sockfd], 1);
+                    m_pool->append(&echos[sockfd]);
                 }
             }
         }
     }
-}
-
-void echoServer::dealWithRead(int sockfd)
-{
-}
-
-void echoServer::dealWithWrite(int sockfd)
-{
 }
