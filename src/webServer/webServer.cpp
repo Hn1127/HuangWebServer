@@ -1,8 +1,9 @@
 #include "webServer.h"
 
 int webServer::m_pipefd[2] = {0, 0};
+int webServer::m_TIMESHOT = 5;
 
-void webServer::init(int port, int max_thread_num, int max_request_num, bool isReactor, bool isListenfdET, bool isConnfdET)
+void webServer::init(int port, int max_thread_num, int max_request_num, bool isReactor, bool isListenfdET, bool isConnfdET, int TIMESHOT)
 {
     m_epollfd = 0;
     m_port = port;
@@ -11,7 +12,9 @@ void webServer::init(int port, int max_thread_num, int max_request_num, bool isR
     m_isReactor = isReactor;
     m_isListenfdET = isListenfdET;
     m_isConnfdET = isConnfdET;
+    m_TIMESHOT = TIMESHOT;
     users = std::vector<http>(MAX_FD_COUNT);
+    user_timers = std::vector<std::shared_ptr<timer>>(MAX_FD_COUNT, nullptr);
     getcwd(m_server_root, 128);
     strcat(m_server_root, "/root");
     http::m_server_root = m_server_root;
@@ -34,7 +37,7 @@ void webServer::threadpoolInit()
 
 void webServer::logInit()
 {
-    Log::get_instance()->init("webServerLog_");
+    Log::get_instance()->init("ServerLog_");
 }
 
 void webServer::eventListen()
@@ -67,6 +70,9 @@ void webServer::eventListen()
     m_epollfd = epoll_create(5);
     assert(m_epollfd != -1);
     http::m_epollfd = m_epollfd;
+    // 设置定时器
+    m_lst_timer.m_epollfd = m_epollfd;
+    alarm(m_TIMESHOT);
 
     // 添加listenfd进入事件表，同时设为非阻塞
     // ET模式+非ONESHOT
@@ -83,19 +89,18 @@ void webServer::eventListen()
     addsig(SIGALRM, sig_handler, false); // 定时器心跳信号
     addsig(SIGTERM, sig_handler, false); // 停止信号
 
-    LOG_INFO("start eventListen\n")
+    LOG_INFO("start eventListen")
 }
 
 void webServer::eventLoop()
 {
     // 开始epoll wait循环
+    LOG_INFO("start eventLoop");
     stop_server = false;
 
     while (!stop_server)
     {
-        LOG_DEBUG("main: epoll waiting...");
         int number = epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);
-        LOG_DEBUG("main: epoll wait %d fd", number);
         if (number < 0 && errno != EINTR)
         {
             // 信号处理程序中断了
@@ -105,7 +110,6 @@ void webServer::eventLoop()
         for (int i = 0; i < number; ++i)
         {
             int sockfd = events[i].data.fd;
-            LOG_DEBUG("main: curfd %d", sockfd);
             if (sockfd == m_listenfd)
             {
                 // 处理新用户连接
@@ -114,7 +118,9 @@ void webServer::eventLoop()
             else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR))
             {
                 // 服务端关闭连接，移除对应的定时器
-                close(sockfd);
+                // 等待定时器自动关闭
+                LOG_DEBUG("server close fd postive %d", sockfd);
+                m_lst_timer.deal_timer(user_timers[sockfd]);
             }
             else if ((sockfd == m_pipefd[0]) && (events[i].events & EPOLLIN))
             {
@@ -124,13 +130,11 @@ void webServer::eventLoop()
             else if (events[i].events & EPOLLIN)
             {
                 // sockfd上有可读事件
-                LOG_DEBUG("main: %d get EPOLLIN", sockfd);
                 dealWithRead(sockfd);
             }
             else if (events[i].events & EPOLLOUT)
             {
                 // 将sockfd对应的连接的写缓冲区内容send出去
-                LOG_DEBUG("main: %d get EPOLLOUT", sockfd);
                 dealWithWrite(sockfd);
             }
         }
@@ -179,6 +183,7 @@ bool webServer::dealNewClientCore()
     // 初始化connfd并添加epoll监听
     users[connfd].init(connfd, client_address);
     http::addfd(m_epollfd, connfd, true, m_isConnfdET);
+    LOG_DEBUG("get new client, fd %d", connfd);
     ++m_user_count;
 
     // 记录对端IP
@@ -186,6 +191,11 @@ bool webServer::dealNewClientCore()
     inet_ntop(AF_INET, &client_address->sin_addr.s_addr, clientIP, 64);
 
     // 添加定时器
+    std::shared_ptr<timer> t_timer(new timer);
+    t_timer->sockfd = connfd;
+    t_timer->expire_time = time(NULL) + m_TIMESHOT;
+    m_lst_timer.add_timer(t_timer);
+    user_timers[connfd] = t_timer;
     return true;
 }
 
@@ -214,12 +224,13 @@ bool webServer::dealWithSignal()
             case SIGALRM:
             {
                 timeout = true;
-                LOG_INFO("webserver tick");
+                m_lst_timer.tick();
                 break;
             }
             case SIGTERM:
             {
                 stop_server = true;
+                LOG_INFO("get signal SIGTERM");
                 LOG_INFO("webserver stop");
                 break;
             }
@@ -234,6 +245,10 @@ bool webServer::dealWithRead(int connfd)
 {
     // 1. Reactor，交由线程池进行读-处理
     // 2. Proactor，主线程读完后交由线程池进行处理
+    // 更新定时器
+    user_timers[connfd]->delay_time(m_TIMESHOT);
+    m_lst_timer.adjust_timer(user_timers[connfd]);
+
     bool isReactor = true;
     if (isReactor)
     {
@@ -258,6 +273,10 @@ bool webServer::dealWithRead(int connfd)
 // 将connfd写缓冲区中内容send出去
 bool webServer::dealWithWrite(int connfd)
 {
+    // 更新定时器
+    user_timers[connfd]->delay_time(m_TIMESHOT);
+    m_lst_timer.adjust_timer(user_timers[connfd]);
+
     bool isReactor = true;
     if (isReactor)
     {
@@ -272,6 +291,7 @@ bool webServer::dealWithWrite(int connfd)
         // 主线程进行发送
         if (users[connfd].write_once())
         {
+            // 更新定时器
             users[connfd].m_state = 1;
         }
     }

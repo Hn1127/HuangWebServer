@@ -25,12 +25,10 @@ http::~http()
 
 void http::process()
 {
-    LOG_DEBUG("---sockfd %d start process---", m_connfd);
     if (isReactor)
     {
         // Reactor模式
         // 接受读写就绪事件
-        LOG_DEBUG("Reactor");
         if (m_state == 0)
         {
             // 读状态
@@ -43,7 +41,6 @@ void http::process()
                 if (ret == NO_REQUEST)
                 {
                     // 请求不完整,再次添加EPOLLIN事件
-                    LOG_DEBUG("NOREQUEST");
                     modfd(m_epollfd, m_connfd, EPOLLIN, true, isConnfdET);
                     return;
                 }
@@ -91,7 +88,6 @@ void http::process()
         // Proactor模式
         // 直接对读缓冲区中内容进行处理，处理结果放入写缓冲区
         // Proactor不会处理写事件,写事件将由主线程进行
-        LOG_DEBUG("Proactor");
         HTTP_CODE ret = process_request();
         // ret返回值 NO_REQUEST, NO_RESOURCE, FORBIDDEN, BAD_REQUEST, FILE_REQUEST, INTERNAL_ERROR
         if (ret = NO_REQUEST)
@@ -167,7 +163,6 @@ void http::removefd(int epollfd, int fd)
 
 void http::init(int connfd, std::shared_ptr<sockaddr_in> addr)
 {
-    LOG_DEBUG("main: init connfd %d", connfd);
     m_connfd = connfd;
     m_addr = addr;
     init();
@@ -190,7 +185,6 @@ void http::init()
 
 bool http::read_once()
 {
-    LOG_DEBUG("%d read_once", m_connfd);
     if (m_read_idx >= READ_BUFFER_SIZE)
     {
         // 读缓冲区已满
@@ -204,14 +198,12 @@ bool http::read_once()
         while (true)
         {
             bytes_read = recv(m_connfd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0);
-            LOG_DEBUG("bytes_read %d", bytes_read);
             LOG_DEBUG("read_buf\n----------\n%s\n----------", (m_read_buf));
             if (bytes_read == -1)
             {
                 if (errno == EAGAIN)
                 {
                     // 正常退出
-                    LOG_DEBUG("read_buf_len %d", strlen(m_read_buf));
                     return true;
                 }
                 return false;
@@ -256,7 +248,6 @@ bool http::write_once()
         while (true)
         {
             bytes_send = writev(m_connfd, m_iv, m_iv_count);
-            LOG_DEBUG("bytes_send %d", bytes_send);
             if (bytes_send == -1)
             {
                 if (errno == EAGAIN)
@@ -363,8 +354,6 @@ http::HTTP_CODE http::process_request()
     LINE_STATE line_state = LINE_OK;
     HTTP_CODE ret = NO_REQUEST;
     char *curLine = nullptr;
-
-    LOG_DEBUG("sockfd %d process_request", m_connfd);
 
     while (true)
     {
@@ -550,7 +539,6 @@ http::HTTP_CODE http::parse_request_content(char *curLine)
     // 为末尾添加\0
     curLine[m_content_length] = '\0';
     m_content = curLine;
-    LOG_DEBUG("parse_request_content:\n%s", curLine);
 
     return GET_REQUEST;
 }
@@ -584,8 +572,6 @@ http::HTTP_CODE http::parse_request()
     // 判断是否有读权限
     if (!(m_file_state.st_mode & S_IROTH))
         return FORBIDDEN_REQUEST;
-    LOG_DEBUG("request url: %s", m_url);
-    LOG_DEBUG("request file: %s", m_filename);
     int filefd = open(m_filename, O_RDONLY);
     m_file_address = (char *)mmap(0, m_file_state.st_size, PROT_READ, MAP_PRIVATE, filefd, 0);
     close(filefd);
@@ -658,7 +644,6 @@ bool http::process_response(HTTP_CODE request_code)
     // 若写缓冲区时未出错,则会到达该处
     m_iv[0].iov_base = m_write_buf;
     m_iv[0].iov_len = m_write_idx;
-    LOG_DEBUG("m_write_idx1 %d", m_write_idx);
     m_iv_count = 1;
     m_bytes_to_send = m_write_idx;
     if (request_code == FILE_REQUEST && m_file_state.st_size != 0)

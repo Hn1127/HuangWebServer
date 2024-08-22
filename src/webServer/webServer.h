@@ -23,7 +23,7 @@ class webServer
 {
 public:
     // 初始化参数
-    void init(int port = 9000, int max_thread_num = 8, int max_request_number = 1000, bool isReactor = true, bool isListenfdET = true, bool isConnfdET = true);
+    void init(int port = 9000, int max_thread_num = 8, int max_request_number = 1000, bool isReactor = true, bool isListenfdET = true, bool isConnfdET = true, int TIMESHOT = 5);
 
     // 启动服务器，开启事件监听和epoll_wait循环
     void run();
@@ -82,13 +82,19 @@ private:
 
     static const int MAX_EVENT_NUMBER = 10000;
     static const int MAX_FD_COUNT = 65536;
+    static int m_TIMESHOT;
 
     // epoll任务
     epoll_event events[MAX_EVENT_NUMBER];
 
     // 线程池
     std::shared_ptr<threadpool<http>> m_pool;
+
     // 用户连接
-    std::vector<http> users; // 每个用户根据socketfd，从列表中获取对应的连接
-    int m_user_count;        // 当前连接数
+    std::vector<http> users;                         // 每个用户根据socketfd，从列表中获取对应的连接
+    std::vector<std::shared_ptr<timer>> user_timers; // 根据sockfd,从列表中获取对应的定时器
+    int m_user_count;                                // 当前连接数
+
+    // 定时器
+    lst_timer m_lst_timer;
 };
