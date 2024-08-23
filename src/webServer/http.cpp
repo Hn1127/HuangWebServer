@@ -176,11 +176,9 @@ void http::init()
     m_line_start = 0;
     m_parse_status = PARSE_REQUESTLINE;
     m_method = GET;
-    /*
     m_url = nullptr;
     m_version = nullptr;
     m_host = nullptr;
-    */
     m_content = nullptr;
     m_content_length = 0;
     m_linger = false;
@@ -277,7 +275,6 @@ bool http::write_once()
             {
                 // 写完毕
                 unmap();
-                init();
                 modfd(m_epollfd, m_connfd, EPOLLIN, true, isConnfdET);
                 // 是否重置状态
                 if (m_linger == true)
@@ -584,7 +581,7 @@ http::HTTP_CODE http::parse_request()
             {
                 *password++ = '\0';
             }
-            if (strncasecmp(password, "password=", 9) == 0)
+            if (password && strncasecmp(password, "password=", 9) == 0)
             {
                 // 前缀为password=
                 password += 9;
