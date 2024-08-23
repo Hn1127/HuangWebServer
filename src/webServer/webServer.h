@@ -23,13 +23,16 @@ class webServer
 {
 public:
     // 初始化参数
-    void init(int port = 9000, int max_thread_num = 8, int max_request_number = 1000, bool isReactor = true, bool isListenfdET = true, bool isConnfdET = true, int TIMESHOT = 5);
+    void init(std::string url, std::string user, std::string pswd, std::string dbname, int sql_num, int port = 9000, int max_thread_num = 8, int max_request_number = 1000, bool isReactor = true, bool isListenfdET = true, bool isConnfdET = true, int TIMESHOT = 5);
 
     // 启动服务器，开启事件监听和epoll_wait循环
     void run();
 
     // 初始化线程池
     void threadpoolInit();
+
+    // 初始化SQL连接池
+    void sqlpoolInit();
 
     // 初始化日志
     void logInit();
@@ -71,6 +74,11 @@ private:
     bool m_isListenfdET;     // m_listenfd是否为ET触发
     bool m_isConnfdET;       // 客户端连接connfd是否为ET触发
     char m_server_root[128]; // 服务器运行的根目录
+    std::string m_url;
+    std::string m_user;
+    std::string m_password;
+    std::string m_dbName;
+    int m_sql_num;
 
     bool stop_server;
     bool timeout; // 定时器时间到将进行一次心跳检测
@@ -89,6 +97,9 @@ private:
 
     // 线程池
     std::shared_ptr<threadpool<http>> m_pool;
+
+    // sql连接池
+    sqlConnectionPool *m_sqlPool;
 
     // 用户连接
     std::vector<http> users;                         // 每个用户根据socketfd，从列表中获取对应的连接

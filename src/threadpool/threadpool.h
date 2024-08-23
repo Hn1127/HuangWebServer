@@ -25,9 +25,10 @@ private:
     void run();
 
 private:
-    int max_thread_number;      // 最大线程数
-    int max_request_number;     // 队列中最大任务数
-    pthread_t *m_threads;       // 线程数组
+    int max_thread_number;  // 最大线程数
+    int max_request_number; // 队列中最大任务数
+    pthread_t *m_threads;   // 线程数组
+
     std::list<T *> m_workqueue; // 工作队列
     MutexLock m_mutex;          // 访问工作队列的互斥锁
     sem m_sem;                  // 查看工作队列是否有工作的信号量

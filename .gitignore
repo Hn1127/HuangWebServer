@@ -34,6 +34,9 @@
 # EchoLogFile directory
 /EchoLogFile
 
+# WebLogFile directory
+/WebLogFile
+
 # build directory
 /build
 

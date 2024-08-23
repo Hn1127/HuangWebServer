@@ -47,14 +47,13 @@ void http::process()
                 if (process_response(ret))
                 {
                     // 写缓冲区正常
-                    // 更新定时器
                     // 添加EPOLLOUT
                     modfd(m_epollfd, m_connfd, EPOLLOUT, true, isConnfdET);
                 }
                 else
                 {
                     // 写缓冲区有误
-                    // 关闭连接
+                    // 等待自动关闭连接
                 }
             }
             else
@@ -72,7 +71,6 @@ void http::process()
             if (write_once())
             {
                 // 写无误
-                // 更新定时器
                 return;
             }
             else
@@ -161,10 +159,11 @@ void http::removefd(int epollfd, int fd)
     close(fd);
 }
 
-void http::init(int connfd, std::shared_ptr<sockaddr_in> addr)
+void http::init(int connfd, std::shared_ptr<sockaddr_in> addr, sqlConnectionPool *sqlPool)
 {
     m_connfd = connfd;
     m_addr = addr;
+    m_sqlPool = sqlPool;
     init();
 }
 
@@ -177,10 +176,20 @@ void http::init()
     m_line_start = 0;
     m_parse_status = PARSE_REQUESTLINE;
     m_method = GET;
+    /*
+    m_url = nullptr;
+    m_version = nullptr;
+    m_host = nullptr;
+    */
+    m_content = nullptr;
     m_content_length = 0;
     m_linger = false;
     m_iv[0].iov_base = nullptr;
     m_iv[1].iov_base = nullptr;
+
+    memset(m_read_buf, '\0', READ_BUFFER_SIZE);
+    memset(m_write_buf, '\0', WRITE_BUFFER_SIZE);
+    memset(m_filename, '\0', FILENAME_LEN);
 }
 
 bool http::read_once()
@@ -198,7 +207,8 @@ bool http::read_once()
         while (true)
         {
             bytes_read = recv(m_connfd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0);
-            LOG_DEBUG("read_buf\n----------\n%s\n----------", (m_read_buf));
+            LOG_INFO("\n----------\n%s\n----------", (m_read_buf));
+
             if (bytes_read == -1)
             {
                 if (errno == EAGAIN)
@@ -267,6 +277,7 @@ bool http::write_once()
             {
                 // 写完毕
                 unmap();
+                init();
                 modfd(m_epollfd, m_connfd, EPOLLIN, true, isConnfdET);
                 // 是否重置状态
                 if (m_linger == true)
@@ -380,7 +391,6 @@ http::HTTP_CODE http::process_request()
                 break;
             }
         }
-
         // 根据parse_status和curLine
         if (m_parse_status == PARSE_REQUESTLINE)
         {
@@ -548,21 +558,117 @@ http::HTTP_CODE http::parse_request()
     // 请求分割接收完毕,根据URL进行进一步判断
     // 此时m_server_root是 /path/root
     strcpy(m_filename, m_server_root);
+    char *username = nullptr;
+    char *password = nullptr;
     if (m_method == POST)
     {
-        // 解析POST请求附带的参数
+        // 解析POST请求附带的参数m_content
         // 实际上涉及到的内容为username和password
-        // 使用form提交的表单为 key=value&key=value
+        // 使用form提交的表单为key=value&key=value
+        if (m_content)
+        {
+            username = m_content;
+            password = strrchr(m_content, '&');
+            if (strncasecmp(username, "username=", 9) == 0)
+            {
+                // 前缀为username=
+                username += 9;
+            }
+            else
+            {
+                // 说明POST参数不全
+                username = nullptr;
+            }
+            // 分割为key=value \0 key=value
+            if (password)
+            {
+                *password++ = '\0';
+            }
+            if (strncasecmp(password, "password=", 9) == 0)
+            {
+                // 前缀为password=
+                password += 9;
+            }
+            else
+            {
+                // 说明POST参数不全
+                password = nullptr;
+            }
+            // 成功取得参数
+        }
     }
     // 路径映射
     if (strcmp(m_url, "/") == 0)
     {
         strcat(m_filename, "/index.html");
     }
+    else if (strcmp(m_url, "/register") == 0)
+    {
+        // 处理POST请求register
+        // 判断参数是否成功取到
+        MYSQL *conn = nullptr;
+        if (username && password)
+        {
+            // 进行sql查询
+            // 若用户名不存在重复，则进入登陆界面
+            char sql_insert[200];
+            strcpy(sql_insert, "INSERT INTO user_table(username, password) VALUES(");
+            strcat(sql_insert, "'");
+            strcat(sql_insert, username);
+            strcat(sql_insert, "', '");
+            strcat(sql_insert, password);
+            strcat(sql_insert, "');");
+            // 获取MYSQL连接
+            sqlConnectionRAII con(conn, m_sqlPool);
+            int res = mysql_query(conn, sql_insert);
+            // res为插入的数目
+            if (!res)
+                strcat(m_filename, "/login.html");
+            else
+                strcat(m_filename, "/registerError.html");
+        }
+        else
+        {
+            // 参数不全则返回Error
+            strcat(m_filename, "/registerError.html");
+        }
+    }
+    else if (strcmp(m_url, "/login") == 0)
+    {
+        // 处理POST请求register
+        // 判断参数是否成功取到
+        MYSQL *conn = nullptr;
+        if (username && password)
+        {
+            // 进行sql查询
+            // 若用户名密码均匹配，则进入welcome.html
+            char sql_insert[200];
+            strcpy(sql_insert, "SELECT FROM user_table where username = ");
+            strcat(sql_insert, "'");
+            strcat(sql_insert, username);
+            strcat(sql_insert, "', AND password = '");
+            strcat(sql_insert, password);
+            strcat(sql_insert, "');");
+            // 获取MYSQL连接
+            sqlConnectionRAII con(conn, m_sqlPool);
+            int res = mysql_query(conn, sql_insert);
+            // res为插入的数目
+            if (res)
+                strcat(m_filename, "/welcome.html");
+            else
+                strcat(m_filename, "/loginError.html");
+        }
+        else
+        {
+            // 参数不全则返回Error
+            strcat(m_filename, "/loginError.html");
+        }
+    }
     else
     {
         strcat(m_filename, m_url);
     }
+    LOG_INFO("response filename:%s", m_filename);
     // 判断filename是否存在
     if (stat(m_filename, &m_file_state) < 0)
         return NO_RESOURCE;

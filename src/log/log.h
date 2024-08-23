@@ -3,6 +3,11 @@
 #include <stdarg.h>
 #include <mutex>
 #include <iostream>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 // 异步日志
 
 class Log

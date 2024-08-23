@@ -19,8 +19,13 @@ int main()
     else if (ISWEBSERVER)
     {
         // web服务器
+        std::string url = "localhost";
+        std::string user = "root";
+        std::string password = "sanduo";
+        std::string dbName = "HuangWebServer";
+        int sql_num = 8;
         webServer server;
-        server.init(9000, 8);
+        server.init(url, user, password, dbName, sql_num, 9000, 8);
         server.run();
     }
 }

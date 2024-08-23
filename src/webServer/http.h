@@ -2,6 +2,7 @@
 
 #include "lst_timer.h"
 #include "log.h"
+#include "sqlConnectionPool.h"
 #include <memory>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -67,7 +68,7 @@ public:
     ~http();
 
     // 初始化
-    void init(int connfd, std::shared_ptr<sockaddr_in> addr);
+    void init(int connfd, std::shared_ptr<sockaddr_in> addr, sqlConnectionPool *sqlPool);
 
     // 重置为初始状态
     void init();
@@ -133,9 +134,10 @@ private:
     void unmap();
 
 public:
-    int m_state; // 0读状态，1写状态
-
+    int m_state;  // 0读状态，1写状态
     int m_connfd; // 对端的socketfd
+    sqlConnectionPool *m_sqlPool;
+
 private:
     // socket信息
     std::shared_ptr<sockaddr_in> m_addr; // 对端的address

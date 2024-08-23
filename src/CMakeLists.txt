@@ -6,6 +6,8 @@ add_subdirectory(log)
 
 add_subdirectory(webServer)
 
+add_subdirectory(sql)
+
 add_executable(server main.cpp)
 
 # 包含线程池头文件

@@ -3,8 +3,13 @@
 int webServer::m_pipefd[2] = {0, 0};
 int webServer::m_TIMESHOT = 5;
 
-void webServer::init(int port, int max_thread_num, int max_request_num, bool isReactor, bool isListenfdET, bool isConnfdET, int TIMESHOT)
+void webServer::init(std::string url, std::string user, std::string pswd, std::string dbname, int sql_num, int port, int max_thread_num, int max_request_num, bool isReactor, bool isListenfdET, bool isConnfdET, int TIMESHOT)
 {
+    m_url = url;
+    m_user = user;
+    m_password = pswd;
+    m_dbName = dbname;
+    m_sql_num = sql_num;
     m_epollfd = 0;
     m_port = port;
     max_thread_number = max_thread_num;
@@ -26,6 +31,7 @@ void webServer::run()
 {
     threadpoolInit();
     logInit();
+    sqlpoolInit();
     eventListen();
     eventLoop();
 }
@@ -33,6 +39,12 @@ void webServer::run()
 void webServer::threadpoolInit()
 {
     m_pool = std::shared_ptr<threadpool<http>>(new threadpool<http>(max_thread_number, max_request_number));
+}
+
+void webServer::sqlpoolInit()
+{
+    sqlConnectionPool::getInstance()->init(m_url, m_user, m_password, m_dbName, 3006, m_sql_num);
+    m_sqlPool = sqlConnectionPool::getInstance();
 }
 
 void webServer::logInit()
@@ -181,7 +193,7 @@ bool webServer::dealNewClientCore()
         return false;
     }
     // 初始化connfd并添加epoll监听
-    users[connfd].init(connfd, client_address);
+    users[connfd].init(connfd, client_address, m_sqlPool);
     http::addfd(m_epollfd, connfd, true, m_isConnfdET);
     LOG_DEBUG("get new client, fd %d", connfd);
     ++m_user_count;

@@ -22,6 +22,11 @@ target_include_directories(webServer
     ${CMAKE_SOURCE_DIR}/src/log
 )
 
+target_include_directories(webServer
+    PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/sql
+)
+
 target_link_libraries(webServer
     PUBLIC
     log
@@ -30,4 +35,9 @@ target_link_libraries(webServer
 target_link_libraries(webServer
     PUBLIC
     timer
+)
+
+target_link_libraries(webServer
+    PUBLIC
+    sqlPool
 )
