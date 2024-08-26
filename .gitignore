@@ -42,3 +42,6 @@
 
 # lin directory
 /lib
+
+# vscode
+/.vscode
