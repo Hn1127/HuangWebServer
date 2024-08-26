@@ -77,7 +77,6 @@ void lst_timer::adjust_timer(std::shared_ptr<timer> t_timer)
 
 void lst_timer::deal_timer(std::shared_ptr<timer> t_timer)
 {
-    LOG_INFO("delete connfd %d", t_timer->sockfd);
     // 移出事件表关闭fd
     epoll_ctl(m_epollfd, EPOLL_CTL_DEL, t_timer->sockfd, 0);
     close(t_timer->sockfd);

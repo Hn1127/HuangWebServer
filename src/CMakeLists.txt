@@ -10,12 +10,6 @@ add_subdirectory(sql)
 
 add_executable(server main.cpp)
 
-# 包含线程池头文件
-target_include_directories(server
-PUBLIC
-threadpool
-)
-
 # 包含echoServer头文件
 target_include_directories(server
 PUBLIC

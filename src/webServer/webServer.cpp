@@ -5,6 +5,7 @@ int webServer::m_TIMESHOT = 5;
 
 void webServer::init(std::string url, std::string user, std::string pswd, std::string dbname, int sql_num, int port, int max_thread_num, int max_request_num, bool isReactor, bool isListenfdET, bool isConnfdET, int TIMESHOT)
 {
+    LOG_INFO("webServer Init");
     m_url = url;
     m_user = user;
     m_password = pswd;
@@ -30,7 +31,6 @@ void webServer::init(std::string url, std::string user, std::string pswd, std::s
 void webServer::run()
 {
     threadpoolInit();
-    logInit();
     sqlpoolInit();
     eventListen();
     eventLoop();
@@ -38,18 +38,15 @@ void webServer::run()
 
 void webServer::threadpoolInit()
 {
+    LOG_INFO("threadpool Init")
     m_pool = std::shared_ptr<threadpool<http>>(new threadpool<http>(max_thread_number, max_request_number));
 }
 
 void webServer::sqlpoolInit()
 {
+    LOG_INFO("sqlpool Init");
     sqlConnectionPool::getInstance()->init(m_url, m_user, m_password, m_dbName, 3006, m_sql_num);
     m_sqlPool = sqlConnectionPool::getInstance();
-}
-
-void webServer::logInit()
-{
-    Log::get_instance()->init("ServerLog_");
 }
 
 void webServer::eventListen()
@@ -107,7 +104,7 @@ void webServer::eventListen()
 void webServer::eventLoop()
 {
     // 开始epoll wait循环
-    LOG_INFO("start eventLoop");
+    LOG_INFO("webServer Init done,start eventLoop");
     stop_server = false;
 
     while (!stop_server)
@@ -131,7 +128,6 @@ void webServer::eventLoop()
             {
                 // 服务端关闭连接，移除对应的定时器
                 // 等待定时器自动关闭
-                LOG_DEBUG("server close fd postive %d", sockfd);
                 m_lst_timer.deal_timer(user_timers[sockfd]);
             }
             else if ((sockfd == m_pipefd[0]) && (events[i].events & EPOLLIN))
@@ -195,7 +191,6 @@ bool webServer::dealNewClientCore()
     // 初始化connfd并添加epoll监听
     users[connfd].init(connfd, client_address, m_sqlPool);
     http::addfd(m_epollfd, connfd, true, m_isConnfdET);
-    LOG_DEBUG("get new client, fd %d", connfd);
     ++m_user_count;
 
     // 记录对端IP

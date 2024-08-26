@@ -205,7 +205,6 @@ bool http::read_once()
         while (true)
         {
             bytes_read = recv(m_connfd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0);
-            LOG_INFO("\n----------\n%s\n----------", (m_read_buf));
 
             if (bytes_read == -1)
             {
@@ -665,7 +664,6 @@ http::HTTP_CODE http::parse_request()
     {
         strcat(m_filename, m_url);
     }
-    LOG_INFO("response filename:%s", m_filename);
     // 判断filename是否存在
     if (stat(m_filename, &m_file_state) < 0)
         return NO_RESOURCE;
@@ -686,11 +684,14 @@ bool http::process_response(HTTP_CODE request_code)
     // 根据请求解析结果，添加响应头和响应正文
     // 响应头为自己添加，正文为文件映射
     // INTERNAL_ERROR, NO_RESOURCE, FORBIDDEN, BAD_REQUEST, FILE_REQUEST
+    LOG_INFO("client request URL: %s", m_url);
+    LOG_INFO("client request filename: %s", m_filename);
     switch (request_code)
     {
     case INTERNAL_ERROR:
     {
         // 服务器处理时出现问题
+        LOG_INFO("response 500 for URL: %s", m_url);
         add_response_line(500, error_500_title);
         add_response_header(strlen(error_500_form));
         // 理论上,写入缓冲区不会false
@@ -702,6 +703,7 @@ bool http::process_response(HTTP_CODE request_code)
     case NO_RESOURCE:
     {
         // 没有对应的文件
+        LOG_INFO("response 404 for URL: %s", m_url);
         add_response_line(404, error_404_title);
         add_response_header(strlen(error_404_form));
         if (!add_response_content(error_404_form))
@@ -711,6 +713,7 @@ bool http::process_response(HTTP_CODE request_code)
     case BAD_REQUEST:
     {
         // 文件所指是个目录
+        LOG_INFO("response 404 for URL: %s", m_url);
         add_response_line(404, error_404_title);
         add_response_header(strlen(error_404_form));
         if (!add_response_content(error_404_form))
@@ -719,6 +722,7 @@ bool http::process_response(HTTP_CODE request_code)
     }
     case FORBIDDEN_REQUEST:
     {
+        LOG_INFO("response 403 for URL: %s", m_url);
         add_response_line(403, error_403_title);
         add_response_header(strlen(error_403_form));
         if (!add_response_content(error_403_form))
@@ -727,6 +731,7 @@ bool http::process_response(HTTP_CODE request_code)
     }
     case FILE_REQUEST:
     {
+        LOG_INFO("response 200 for URL: %s", m_url);
         add_response_line(200, ok_200_title);
         if (m_file_state.st_size == 0)
         {

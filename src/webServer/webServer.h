@@ -34,9 +34,6 @@ public:
     // 初始化SQL连接池
     void sqlpoolInit();
 
-    // 初始化日志
-    void logInit();
-
     // 开启监听
     void eventListen();
 

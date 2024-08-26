@@ -17,14 +17,14 @@ target_include_directories(webServer
     ${CMAKE_SOURCE_DIR}/src/webServer/timer
 )
 
-target_include_directories(webServer
+target_link_libraries(webServer
     PUBLIC
-    ${CMAKE_SOURCE_DIR}/src/log
+    timer
 )
 
 target_include_directories(webServer
     PUBLIC
-    ${CMAKE_SOURCE_DIR}/src/sql
+    ${CMAKE_SOURCE_DIR}/src/log
 )
 
 target_link_libraries(webServer
@@ -32,9 +32,9 @@ target_link_libraries(webServer
     log
 )
 
-target_link_libraries(webServer
+target_include_directories(webServer
     PUBLIC
-    timer
+    ${CMAKE_SOURCE_DIR}/src/sql
 )
 
 target_link_libraries(webServer

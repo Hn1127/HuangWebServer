@@ -68,7 +68,6 @@ void sqlConnectionPool::init(std::string url, std::string user, std::string pass
     m_databaseName = databaseName;
     m_port = port;
     m_maxConn = maxConn;
-    LOG_INFO("sqlPool initing...")
     // 初始化sql连接
     for (int i = 0; i < m_maxConn; i++)
     {
@@ -77,20 +76,17 @@ void sqlConnectionPool::init(std::string url, std::string user, std::string pass
 
         if (con == NULL)
         {
-            LOG_ERROR("MySQL init Error");
             exit(1);
         }
         con = mysql_real_connect(con, url.c_str(), user.c_str(), password.c_str(), databaseName.c_str(), port, NULL, 0);
 
         if (con == NULL)
         {
-            LOG_ERROR("MySQL init Error");
             exit(1);
         }
         m_connList.push_back(con);
         ++m_freeConn;
     }
-    LOG_INFO("sqlPool init done,maxConn is %d", maxConn);
     m_maxConn = m_freeConn;
     m_sem = sem(m_freeConn);
 }

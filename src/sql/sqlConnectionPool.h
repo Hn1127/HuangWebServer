@@ -1,7 +1,6 @@
 #pragma once
 
 #include "locker.h"
-#include "log.h"
 #include <mysql/mysql.h>
 #include <string>
 #include <list>

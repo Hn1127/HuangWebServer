@@ -62,5 +62,6 @@
         "variant": "cpp",
         "format": "cpp",
         "map": "cpp"
-    }
+    },
+    "cmake.cmakePath": "/usr/bin/cmake"
 }

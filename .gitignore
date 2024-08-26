@@ -32,10 +32,10 @@
 *.app
 
 # EchoLogFile directory
-/EchoLogFile
+/EchoLogFile/.log
 
 # WebLogFile directory
-/WebLogFile
+/WebLogFile/.log
 
 # build directory
 /build

@@ -78,3 +78,5 @@ public:
 private:
     MutexLock _mutex;
 };
+
+// 封装条件变量

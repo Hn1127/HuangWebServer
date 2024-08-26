@@ -1,11 +1,12 @@
 #pragma once
 
+#include "../locker/locker.h"
 #include <pthread.h>
 #include <vector>
 #include <list>
 #include <memory>
-#include "../locker/locker.h"
-#include "handler.h"
+#include <thread>
+#include <mutex>
 
 // 创建线程池以处理 T 的任务
 template <class T>
@@ -43,7 +44,10 @@ threadpool<T>::threadpool(int max_thread_num, int max_request_num)
         throw std::exception();
     m_threads = new pthread_t[max_thread_number];
     if (!m_threads)
+    {
         throw std::exception();
+    }
+
     for (int i = 0; i < max_thread_number; ++i)
     {
         // 初始化线程进入worker函数

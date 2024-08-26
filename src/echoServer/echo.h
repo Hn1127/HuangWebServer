@@ -1,7 +1,6 @@
 #pragma once
 
 #include "log.h"
-#include "handler.h"
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
@@ -17,7 +16,7 @@ const int READ_BUFFER_SIZE = 1024;
 const int WRITE_BUFFER_SIZE = 1024;
 
 // 可交由 threadpool 执行的任务
-class echo : public handler
+class echo
 {
 public:
     void init(int connfd, const sockaddr_in &addr);
